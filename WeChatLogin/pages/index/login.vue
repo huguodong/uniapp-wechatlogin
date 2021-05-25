@@ -271,9 +271,15 @@
 				uni.getProvider({
 					service: 'oauth',
 					success: function(res) {
+						uni.showToast({
+							title: "尝试唤起微信",
+							icon: 'none',
+							duration: 2000
+						});
 						console.log(res.provider);
 						//支持微信、qq和微博等
 						if (~res.provider.indexOf('weixin')) {
+							console.log("微信");
 							uni.login({
 								provider: 'weixin',
 								success: function(loginRes) {
@@ -288,6 +294,11 @@
 									// 		 console.log(err)
 									// 	}
 									// })
+									uni.showToast({
+										title: "获取用户信息成功",
+										icon: 'none',
+										duration: 2000
+									});
 									// 获取用户信息
 									uni.getUserInfo({
 										provider: 'weixin',
@@ -306,6 +317,11 @@
 									});
 								},
 								fail: function(res) {
+									uni.showToast({
+										title: "登录微信失败:"+JSON.stringify(res),
+										icon: 'none',
+										duration: 2000
+									});
 									console.log("App微信获取用户信息失败", res);
 								}
 							});
