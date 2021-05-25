@@ -1,6 +1,6 @@
 # Uniapp-WeChatLogin
 
-Uniapp微信登录，支持智联账号登录和微信登录
+Uniapp登录demo，支持智联账号登录和微信登录
 
 兼容Android,IOS和微信小程序
 
