@@ -1,11 +1,12 @@
 import Request from '../../js_sdk/luch-request/luch-request/index.js'
 const http=new Request()
-let baseUrl="http://153.101.199.82:8888/api"
- // let baseUrl="http://localhost:5000/api"
+// let baseUrl="http://153.101.199.82:8888/api"
+ let baseUrl="http://192.168.0.32:5000/api"
 
 // 配置全局
 http.setConfig((config)=>{
 	config.baseURL=baseUrl
+	config.timeout=5000
 	config.custom = {
 			loading:true
 		}
@@ -15,7 +16,7 @@ http.setConfig((config)=>{
 
 //请求前拦截，用来动态加参
 http.interceptors.request.use((config) => {
-	if(config.url !== '/applogin' || config.url!=='login'){
+	if(config.url !== '/applogin' || config.url!=='login'|| config.url!=='wxlogin'){
 			config.header.Authorization ='Bearer '+ uni.getStorageSync("token")
 		}	// 演示custom 用处  
 	if (config.custom.loading) {

@@ -52,7 +52,8 @@
                         "appsecret" : "794a2d9802450a03817932e17de3efab",
                         "UniversalLinks" : ""
                     }
-                }
+                },
+                "ad" : {}
             }
         }
     },
@@ -60,7 +61,7 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "wx8055815d326ad864",
+        "appid" : "wx4460c0d58e2e9e76",
         "setting" : {
             "urlCheck" : false,
             "es6" : true

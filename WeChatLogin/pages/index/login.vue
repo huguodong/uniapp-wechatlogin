@@ -95,18 +95,17 @@
 							<!-- 		<button type="default" open-type="getUserInfo" @getuserinfo="getUserInfo"
 									withCredentials="true">小程序登录</button> -->
 							<!-- #ifdef MP-WEIXIN -->
-							<!-- 		<button class="mp-login cu-btn cuIcon " type="default" open-type="getUserInfo"
-								@getuserinfo="getUserInfo" withCredentials="true"> </button> -->
-							<image class="avatar" src="../../static/icon_weixin.png" @tap="getUserInfo()"
+							<button class="mp-login cu-btn cuIcon " open-type="getPhoneNumber"
+								@getphonenumber="getPhoneNumber"> </button>
+							<!-- 	<image class="avatar" src="../../static/icon_weixin.png" @tap="getUserInfo()"
+								alt="weixinLogin"> -->
+							<!-- #endif -->
+							<!-- #ifndef MP-WEIXIN -->
+							<image class="avatar" src="../../static/icon_weixin.png" @tap="weiXinLogin()"
 								alt="weixinLogin">
 								<!-- #endif -->
-								<!-- #ifndef MP-WEIXIN -->
-								<image class="avatar" src="../../static/icon_weixin.png" @tap="weiXinLogin()"
-									alt="weixinLogin">
 
-									<!-- #endif -->
-
-									<!-- <img class="icon" src="../../static/images/icon_weibo.png" @click="$emit('weibo_login')" alt="weiboLogin"> -->
+								<!-- <img class="icon" src="../../static/images/icon_weibo.png" @click="$emit('weibo_login')" alt="weiboLogin"> -->
 						</slot>
 					</view>
 				</view>
@@ -120,7 +119,8 @@
 	import cmdPageBody from "@/components/cmd-page-body/cmd-page-body.vue"
 	import cmdTransition from "@/components/cmd-transition/cmd-transition.vue"
 	import cmdInput from "@/components/cmd-input/cmd-input.vue"
-	import md5 from "../../commons/md5.js";
+	import md5 from "../../commons/md5.js"
+
 	export default {
 		components: {
 			cmdPageBody,
@@ -153,6 +153,7 @@
 				},
 				loginMobile: false,
 				loginAccount: false,
+				mpCode:""
 
 			}
 		},
@@ -259,7 +260,7 @@
 				}
 			},
 			addStorge(res) {
-				console.log("res")
+
 				uni.setStorageSync("token", res.data.token);
 				uni.setStorageSync("username", res.data.username)
 				uni.setStorageSync("userid", res.data.userid)
@@ -268,6 +269,7 @@
 				})
 			},
 			weiXinLogin() {
+				let _this = this;
 				uni.getProvider({
 					service: 'oauth',
 					success: function(res) {
@@ -294,11 +296,12 @@
 									// 		 console.log(err)
 									// 	}
 									// })
-									uni.showToast({
-										title: "获取用户信息成功",
-										icon: 'none',
-										duration: 2000
-									});
+									// uni.showToast({
+									// 	title: "微信登录成功",
+									// 	icon: 'none',
+									// 	duration: 2000
+									// });
+
 									// 获取用户信息
 									uni.getUserInfo({
 										provider: 'weixin',
@@ -313,12 +316,13 @@
 												icon: 'none',
 												duration: 2000
 											});
+											 _this.loginByOpenID(infoRes.userInfo.openId,loginRes.authResult.access_token)
 										}
 									});
 								},
 								fail: function(res) {
 									uni.showToast({
-										title: "登录微信失败:"+JSON.stringify(res),
+										title: "登录微信失败:" + JSON.stringify(res),
 										icon: 'none',
 										duration: 2000
 									});
@@ -386,7 +390,7 @@
 								// 				}
 								// 			}
 								// 		});
-										
+
 								// 		//openId、或SessionKdy存储//隐藏loading
 								// 		console.log("auth.code2Session失败", err)
 								// 	}
@@ -429,9 +433,91 @@
 				// 		});
 				// 	}
 				// });
+			},
+			getPhoneNumber(res) {
+				let _this=this;
+				uni.checkSession({
+					success () {
+					    //session_key 未过期，并且在本生命周期一直有效
+						console.log("session_key 未过期，并且在本生命周期一直有效")
+						console.log(res)
+						if(res.detail.errMsg=="getPhoneNumber:ok"){
+							_this.mpPhoneLogin(res)
+						}
+					  },
+					  fail () {
+					    // session_key 已经失效，需要重新执行登录流程
+					    this.mpLogin();
+						_this.mpPhoneLogin(res)
+					  }
+				})
+			},
+			loginByOpenID(openId,token) {
+				this.$http.post('/wxlogin', {
+					openId: openId,
+					access_token:token
+				}).then(res => {
+					console.log("微信登录成功", res);
+					this.addStorge(res)
+				}).catch(err => {
+					console.log("微信登录失败", err);
+					if (err.data.code == 600) {
+						uni.showToast({
+							title: "请先绑定手机!",
+							icon: 'none',
+							duration: 2000
+						});
+						uni.navigateTo({
+							url: 'bind?openId=' + openId
+						});
+					} else {
+						uni.showToast({
+							title: err.data.msg,
+							icon: 'none',
+							duration: 2000
+						});
+					}
 
 
+				})
 			}
+		    ,
+			mpLogin() {
+				uni.login({
+					provider: 'weixin',
+					success: res => {
+						console.log("微信小程序登录成功!")
+						this.mpCode=res.code
+						console.log(this.mpCode)
+					},
+					fail: (e) => {
+						console.log("微信小程序登录失败!", e)
+					}
+				})
+			},
+			mpPhoneLogin(res) {
+				console.log("请求服务端小程序登录!", data)
+				let data=res.detail;
+				let _this=this;
+				this.$http.post('/wplogin', {
+					code: this.mpCode,
+					EncryptedData:data.encryptedData,
+					iv:data.iv
+				}).then(res => {
+					console.log("小程序登录成功", res);
+					this.addStorge(res)
+				}).catch(err => {
+					console.log("小程序登录失败", err);
+					uni.showToast({
+						title: err.data.msg,
+						icon: 'none',
+						duration: 2000
+					});
+					_this.mpLogin();
+				})
+				
+			}
+			
 		},
 		watch: {
 			/**
@@ -478,12 +564,25 @@
 					icon: 'none',
 					duration: 2000
 				});
+			} else if (option.type == 'openid') {
+				uni.showToast({
+					title: "微信绑定失败！",
+					icon: 'none',
+					duration: 2000
+				});
 			}
+			// #ifdef MP-WEIXIN
+			console.log("这是微信小程序");
+			this.mpLogin();
+			// #endif
+
 		},
 	}
 </script>
 
 <style lang='scss'>
+	@import "../../static/style/login.scss";
+
 	.mp-login {
 		background: url(../../static/icon_weixin.png);
 		background-size: 100% 100%;
@@ -501,197 +600,5 @@
 
 	page {
 		background: #fff;
-	}
-
-	.container {
-		padding-top: 115px;
-		position: relative;
-		width: 100vw;
-		height: 100vh;
-		overflow: hidden;
-		background: #fff;
-	}
-
-	.left-top-sign {
-		font-size: 120upx;
-		color: $page-color-base;
-		position: relative;
-		left: -16upx;
-	}
-
-	.right-top-sign {
-		position: absolute;
-		top: 80upx;
-		right: -30upx;
-		z-index: 95;
-
-		&:before,
-		&:after {
-			display: block;
-			content: "";
-			width: 400upx;
-			height: 80upx;
-			background: #b4f3e2;
-		}
-
-		&:before {
-			transform: rotate(50deg);
-			border-radius: 0 50px 0 0;
-		}
-
-		&:after {
-			position: absolute;
-			right: -198upx;
-			top: 0;
-			transform: rotate(-50deg);
-			border-radius: 50px 0 0 0;
-			/* background: pink; */
-		}
-	}
-
-	.left-bottom-sign {
-		position: absolute;
-		left: -270upx;
-		bottom: -320upx;
-		border: 100upx solid #d0d1fd;
-		border-radius: 50%;
-		padding: 180upx;
-	}
-
-	.login {
-		border-color: #007AFF;
-		margin-top: 156upx;
-		margin-right: 72upx;
-		margin-left: 72upx;
-	}
-
-	.login-title {
-		font-size: 56upx;
-		font-weight: 500;
-	}
-
-	.login-explain {
-		font-size: 28upx;
-		color: #9E9E9E;
-	}
-
-	.login-phone {
-		display: flex;
-		flex-direction: row;
-		justify-content: space-between;
-		align-items: center;
-		border-bottom: 2upx #dedede solid;
-		margin-top: 56upx;
-		margin-bottom: 40upx;
-	}
-
-	.login-phone-getcode {
-		color: #3F51B5;
-		text-align: center;
-		width: 230upx;
-		/* min-width: 130upx;
-		max-width: 160upx; */
-		/* font-size: 30upx; */
-	}
-
-	.login-code {
-		border-bottom: 2upx #dedede solid;
-	}
-
-	.btn-login {
-		margin-top: 100upx;
-		border-radius: 50upx;
-		font-size: 16px;
-		color: #fff;
-		background: linear-gradient(to right, #88a1f9, #9ac6ff);
-	}
-
-	.btn-login-active {
-		background: linear-gradient(to right, #365fff, #36bbff);
-	}
-
-	.btn-login-hover {
-		background: linear-gradient(to right, #365fdd, #36bbfa);
-	}
-
-	.login-username {
-		margin-top: 56upx;
-		margin-bottom: 40upx;
-		border-bottom: 2upx #dedede solid;
-	}
-
-	.login-password {
-		border-bottom: 2upx #dedede solid;
-	}
-
-	button[disabled] {
-		color: #fff;
-	}
-
-	.login-mode {
-		text-align: center;
-		margin-top: 32upx;
-	}
-
-	.otherLoginWays {
-		top: 50upx;
-		width: 80%;
-		position: relative;
-		bottom: 8.2%;
-		left: 10%;
-		right: 10%;
-		text-align: center;
-
-		.otherWayTextWrapper {
-			line-height: 0;
-
-			&:before,
-			&:after {
-				position: absolute;
-				background: #ddd;
-				content: "";
-				height: 1px;
-				width: 30%;
-			}
-
-			&:before {
-				left: 0;
-			}
-
-			&:after {
-				right: 0;
-			}
-
-			.otherWayText {
-				font-size: .8rem;
-				color: #bbbbbb;
-			}
-		}
-
-		.icons {
-			display: flex;
-			flex-direction: row;
-			justify-content: space-around;
-			margin-top: 1.4em;
-
-			img {
-				width: 2rem;
-				height: 2em;
-			}
-		}
-	}
-
-	.protocol {
-		position: fixed;
-		bottom: 4%;
-		left: 2%;
-		right: 2%;
-		font-size: .72em;
-		margin-top: 8%;
-		color: #333333;
-
-		span {
-			color: #2986de;
-		}
 	}
 </style>
